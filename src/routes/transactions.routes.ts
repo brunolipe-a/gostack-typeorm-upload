@@ -41,8 +41,8 @@ transactionsRouter.delete('/:id', async (request, response) => {
   return response.status(204).json();
 });
 
-transactionsRouter.post('/import', async (request, response) => {
-  await ImportTransactionsService.execute();
-});
+// transactionsRouter.post('/import', async (request, response) => {
+//   await ImportTransactionsService.execute();
+// });
 
 export default transactionsRouter;
