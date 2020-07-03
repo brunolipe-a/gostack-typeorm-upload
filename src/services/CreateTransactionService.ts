@@ -1,13 +1,14 @@
-import { getCustomRepository, getRepository } from 'typeorm';
-
+import { getCustomRepository } from 'typeorm';
 import AppError from '../errors/AppError';
-import TransactionsRepository from '../repositories/TransactionsRepository';
-import Category from '../models/Category';
 
-interface RequestDTO {
+import Transaction from '../models/Transaction';
+import TransactionsRepository from '../repositories/TransactionsRepository';
+import CategoryService from './CategoryService';
+
+interface Request {
   title: string;
   value: number;
-  type: string;
+  type: 'income' | 'outcome';
   category: string;
 }
 
@@ -17,54 +18,31 @@ class CreateTransactionService {
     value,
     type,
     category,
-  }: RequestDTO): Promise<{
-    category: Category;
-    id: string;
-    title: string;
-    type: 'income' | 'outcome';
-    value: number;
-    category_id: string;
-    created_at: Date;
-    updated_at: Date;
-  }> {
-    if (!(type === 'income' || type === 'outcome')) {
-      throw new AppError('Incorrect operation type');
-    }
-    const transactionRepository = getCustomRepository(TransactionsRepository);
-    const categoryRepository = getRepository(Category);
+  }: Request): Promise<Transaction> {
+    const transactionsRepository = getCustomRepository(TransactionsRepository);
 
-    let categoryByDb = await categoryRepository.findOne({
-      where: { title: category },
+    const balance = await transactionsRepository.getBalance();
+
+    if (type === 'outcome' && value > balance.total) {
+      throw new AppError('Valor de saída maior que o saldo total', 400);
+    }
+
+    const categoryService = new CategoryService();
+
+    const categorySearch = await categoryService.execute({
+      categoryTitle: category,
     });
 
-    if (!categoryByDb) {
-      categoryByDb = categoryRepository.create({ title: category });
-
-      await categoryRepository.save(categoryByDb);
-    }
-
-    const transactionList = await transactionRepository.find();
-    const { total } = await transactionRepository.getBalance(transactionList);
-
-    if (type === 'outcome' && total < value) {
-      throw new AppError('Insufficient funds');
-    }
-
-    const transaction = transactionRepository.create({
+    const transaction = transactionsRepository.create({
       title,
       value,
       type,
-      category_id: categoryByDb.id,
+      category_id: categorySearch.id,
     });
 
-    await transactionRepository.save(transaction);
+    await transactionsRepository.save(transaction);
 
-    delete transaction.category_id;
-
-    return {
-      ...transaction,
-      category: categoryByDb,
-    };
+    return transaction;
   }
 }
 
