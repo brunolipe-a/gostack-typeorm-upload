@@ -1,11 +1,8 @@
 import {
+  Entity,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  Entity,
-  JoinColumn,
-  OneToMany,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 
 @Entity('categories')
@@ -19,7 +16,7 @@ class Category {
   @CreateDateColumn()
   created_at: Date;
 
-  @UpdateDateColumn()
+  @CreateDateColumn()
   updated_at: Date;
 }
 

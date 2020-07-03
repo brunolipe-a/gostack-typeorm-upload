@@ -1,21 +1,20 @@
-// import AppError from '../errors/AppError';
+import { getRepository } from 'typeorm';
 
-import { getCustomRepository } from 'typeorm';
 import AppError from '../errors/AppError';
-import TransactionsRepository from '../repositories/TransactionsRepository';
+import Transaction from '../models/Transaction';
 
 class DeleteTransactionService {
-  public async execute({ id }: { id: string }): Promise<void> {
-    try {
-      const transactionsRepository = getCustomRepository(
-        TransactionsRepository,
-      );
-      // const transaction = await transactionsRepository.findByIds([id]);
-      await transactionsRepository.delete(id);
-    } catch (e) {
-      throw new AppError('Não foi possivel apagar');
+  public async execute(transactionId: string): Promise<void> {
+    const transactionRepository = getRepository(Transaction);
+
+    const transaction = await transactionRepository.findOne(transactionId);
+
+    if (!transaction) {
+      throw new AppError('Transaction not found', 400);
     }
+
+    await transactionRepository.delete(transaction.id);
   }
 }
 
-export default new DeleteTransactionService();
+export default DeleteTransactionService;

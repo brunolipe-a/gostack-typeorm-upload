@@ -1,59 +1,71 @@
 import { getCustomRepository, getRepository } from 'typeorm';
-import TransactionsRepository from '../repositories/TransactionsRepository';
-import Transaction from '../models/Transaction';
-import Category from '../models/Category';
+
 import AppError from '../errors/AppError';
+import TransactionsRepository from '../repositories/TransactionsRepository';
+import Category from '../models/Category';
 
-// import AppError from '../errors/AppError';
-
-interface Request {
+interface RequestDTO {
   title: string;
   value: number;
-  type: 'income' | 'outcome';
-  category_title: string;
+  type: string;
+  category: string;
 }
 
 class CreateTransactionService {
   public async execute({
-    category_title,
     title,
-    type,
     value,
-  }: Request): Promise<Transaction> {
+    type,
+    category,
+  }: RequestDTO): Promise<{
+    category: Category;
+    id: string;
+    title: string;
+    type: 'income' | 'outcome';
+    value: number;
+    category_id: string;
+    created_at: Date;
+    updated_at: Date;
+  }> {
+    if (!(type === 'income' || type === 'outcome')) {
+      throw new AppError('Incorrect operation type');
+    }
     const transactionRepository = getCustomRepository(TransactionsRepository);
     const categoryRepository = getRepository(Category);
-    const balance = await transactionRepository.getBalance();
 
-    let category = await categoryRepository.findOne({
-      where: { title: category_title },
+    let categoryByDb = await categoryRepository.findOne({
+      where: { title: category },
     });
-    if (!category) {
-      category = await categoryRepository.create({
-        title: category_title,
-      });
 
-      await categoryRepository.save(category);
+    if (!categoryByDb) {
+      categoryByDb = categoryRepository.create({ title: category });
+
+      await categoryRepository.save(categoryByDb);
     }
 
-    if (type === 'outcome' && balance.total < value) {
-      throw new AppError('Não pode tirar dinheiro que não existe');
+    const transactionList = await transactionRepository.find();
+    const { total } = await transactionRepository.getBalance(transactionList);
+
+    if (type === 'outcome' && total < value) {
+      throw new AppError('Insufficient funds');
     }
 
-    try {
-      const transaction = await transactionRepository.create({
-        title,
-        type,
-        value,
-        category_id: category.id,
-      });
+    const transaction = transactionRepository.create({
+      title,
+      value,
+      type,
+      category_id: categoryByDb.id,
+    });
 
-      await transactionRepository.save(transaction);
+    await transactionRepository.save(transaction);
 
-      return transaction;
-    } catch (e) {
-      throw new AppError('Erro');
-    }
+    delete transaction.category_id;
+
+    return {
+      ...transaction,
+      category: categoryByDb,
+    };
   }
 }
 
-export default new CreateTransactionService();
+export default CreateTransactionService;

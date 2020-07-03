@@ -1,11 +1,10 @@
 import {
+  Entity,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  Entity,
-  JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
+  JoinColumn,
 } from 'typeorm';
 
 import Category from './Category';
@@ -34,7 +33,7 @@ class Transaction {
   @CreateDateColumn()
   created_at: Date;
 
-  @UpdateDateColumn()
+  @CreateDateColumn()
   updated_at: Date;
 }
 
